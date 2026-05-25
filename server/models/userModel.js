@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import { MAX } from "uuid";
 
 const userSchema = new mongoose.Schema({
   name: {
