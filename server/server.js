@@ -13,14 +13,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// mongoose
-//   .connect(process.env.MONGO_URI)
-//   .then(() => {
-//     console.log("DB connected");
-//   })
-//   .catch((err) => {
-//     console.log(err.message);
-//   });
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log("DB connected");
+  })
+  .catch((err) => {
+    console.log(err.message);
+  });
 
 app.use("/auth", authRouter);
 

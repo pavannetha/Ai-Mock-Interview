@@ -2,8 +2,10 @@ import axios from "axios";
 import React from "react";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Signup() {
+  const navigate = useNavigate();
   const [formValues, setFormValues] = useState({
     name: "",
     email: "",
@@ -16,7 +18,6 @@ export default function Signup() {
   function handleformData(e) {
     setFormValues({ ...formValues, [e.target.name]: e.target.value });
   }
-  console.log(formValues);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -34,23 +35,26 @@ export default function Signup() {
       return;
     }
     if (formValues.phone.length > 10) {
-      toast.error("incorrect phone number format", {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: false,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "light",
-      });
+      toast.error("incorrect phone number format");
       return;
     }
-    const data = await axios.post("http://localhost:4000/auth/signup");
-    console.log(data);
+    const body = {
+      name: formValues.name,
+      email: formValues.email,
+      age: formValues.age,
+      phone: formValues.phone,
+      password: formValues.password,
+    };
+    try {
+      const data = await axios.post("http://localhost:4000/auth/signup", body);
+      console.log(data);
+      navigate("/login");
+    } catch (err) {
+      toast.error(err.response.data.message);
+    }
   }
   return (
-    <div className="h-screen flex justify-center items-center">
+    <div className="h-screen flex flex-col justify-center items-center">
       <form
         onSubmit={handleSubmit}
         className="flex justify-center items-center flex-col gap-1"
@@ -123,6 +127,7 @@ export default function Signup() {
         </label>
         <input type="submit" />
       </form>
+      <Link to="/login">Login</Link>
     </div>
   );
 }
