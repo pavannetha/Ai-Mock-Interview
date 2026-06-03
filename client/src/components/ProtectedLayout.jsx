@@ -4,7 +4,7 @@ import { Navigate, Outlet } from "react-router-dom";
 function ProtectedLayout() {
   const userDetails = localStorage.getItem("user");
   if (userDetails) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return (

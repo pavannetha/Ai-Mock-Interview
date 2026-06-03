@@ -9,7 +9,7 @@ export default function Signup() {
   const [formValues, setFormValues] = useState({
     name: "",
     email: "",
-    age: 0,
+    dob: "",
     phone: "",
     password: "",
     confirmPassword: "",
@@ -41,7 +41,7 @@ export default function Signup() {
     const body = {
       name: formValues.name,
       email: formValues.email,
-      age: formValues.age,
+      dob: formValues.dob,
       phone: formValues.phone,
       password: formValues.password,
     };
@@ -81,14 +81,14 @@ export default function Signup() {
             onChange={handleformData}
           />
         </label>
-        <label htmlFor="age">
-          Age :
+        <label htmlFor="dob">
+          Dob :
           <input
             className="border-1"
-            type="number"
-            id="age"
-            name="age"
-            value={formValues.age}
+            type="date"
+            id="dob"
+            name="dob"
+            value={formValues.dob}
             onChange={handleformData}
           />
         </label>

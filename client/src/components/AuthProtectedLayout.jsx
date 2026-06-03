@@ -1,12 +1,13 @@
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
+import ContextProvider from "./ContextProvider";
 
 function AuthProtectedLayout() {
-  if (!localStorage.getItem("user")) return <Navigate to="/login" />;
+  if (!localStorage.getItem("user")) return <Navigate to="/login" replace />;
   return (
-    <div>
+    <ContextProvider>
       <Outlet />
-    </div>
+    </ContextProvider>
   );
 }
 

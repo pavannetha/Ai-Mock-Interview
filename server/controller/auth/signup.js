@@ -3,7 +3,7 @@ import { user } from "../../models/userModel.js";
 import bcrypt from "bcryptjs";
 
 export async function signup(req, res) {
-  const { name, email, age, phone, password } = req.body;
+  const { name, email, dob, phone, password } = req.body;
   try {
     //check whether user exist in valid user collection
     const isValid = await mongoose.connection

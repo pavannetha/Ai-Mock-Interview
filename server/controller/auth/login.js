@@ -24,7 +24,7 @@ export async function login(req, res) {
     const userDetails = {
       name: userExist.name,
       email: userExist.email,
-      age: userExist.age || 17,
+      dob: userExist.dob,
       phone: userExist.phone,
     };
     res.status(200).json({ message: "user Logged In", userDetails, token });
