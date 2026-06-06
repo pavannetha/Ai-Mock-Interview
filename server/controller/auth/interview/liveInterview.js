@@ -24,10 +24,10 @@ export async function liveInterview(req, res) {
           console.log(response);
           */
   }
-  const promt = req.body.promt;
+  const prompt = req.body.prompt;
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash",
-    contents: promt,
+    contents: prompt,
   });
   res.status(200).json({ message: "ok", data: response.text });
 }

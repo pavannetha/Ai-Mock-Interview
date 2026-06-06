@@ -51,12 +51,12 @@ function Layout() {
   return (
     <div className="h-screen flex">
       {!isSidebarHidden && (
-        <div className="border-1 w-44">
+        <div className="border-1 w-44 fixed left-0 top-0 h-screen">
           <Sidebar />
         </div>
       )}
 
-      <div className="w-full">
+      <div className="w-full overflow-y-auto ">
         <Outlet />
       </div>
     </div>
