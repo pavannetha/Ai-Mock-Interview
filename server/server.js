@@ -6,6 +6,8 @@ import mongoose from "mongoose";
 import cors from "cors";
 import authRouter from "./routes/auth.js";
 import userRouter from "./routes/user.js";
+import interviewRouter from "./routes/interviewRouter.js";
+import { authmiddleware } from "./middlewares/authmiddleware.js";
 // import jsonwebtoken from "jsonwebtoken";
 // import cookieParser from "cookie-parser";
 
@@ -24,7 +26,8 @@ mongoose
   });
 
 app.use("/auth", authRouter);
-app.use("/user", userRouter);
+app.use("/user", authmiddleware, userRouter);
+app.use("/interview", authmiddleware, interviewRouter);
 
 app.listen(process.env.PORT, () => {
   console.log("server is running at 4000 ");
