@@ -47,7 +47,7 @@ function App() {
 function Layout() {
   const location = useLocation();
   const isSidebarHidden =
-    location.pathname == "/login" || location.pathname == "/signup";
+    location.pathname === "/login" || location.pathname === "/signup";
   return (
     <div className="h-screen flex">
       {!isSidebarHidden && (
@@ -56,7 +56,9 @@ function Layout() {
         </div>
       )}
 
-      <div className="w-full overflow-y-auto ">
+      <div
+        className={`w-full overflow-y-auto ${!isSidebarHidden ? "ml-44" : ""}`}
+      >
         <Outlet />
       </div>
     </div>
@@ -64,4 +66,3 @@ function Layout() {
 }
 
 export default App;
-App;
