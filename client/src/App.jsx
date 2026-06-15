@@ -17,6 +17,7 @@ import Sidebar from "./components/Sidebar";
 import NewInterview from "./pages/NewInterview";
 import History from "./pages/History";
 import Profile from "./pages/Profile";
+import Dashboard from "./pages/Dashboard";
 
 function App() {
   return (
@@ -36,6 +37,7 @@ function App() {
               <Route path="/new-interview" element={<NewInterview />} />
               <Route path="/history" element={<History />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/dashboard" element={<Dashboard />} />
             </Route>
           </Route>
         </Routes>
