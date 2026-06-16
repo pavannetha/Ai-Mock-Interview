@@ -11,6 +11,7 @@ import { authmiddleware } from "./middlewares/authmiddleware.js";
 import http from "http";
 import { Server } from "socket.io";
 import interviewSocket from "./socket/interviewSoket.js";
+import jwt from "jsonwebtoken";
 // import jsonwebtoken from "jsonwebtoken";
 // import cookieParser from "cookie-parser";
 
@@ -32,18 +33,35 @@ app.use("/auth", authRouter);
 app.use("/user", authmiddleware, userRouter);
 app.use("/interview", authmiddleware, interviewRouter);
 
+//create a io middleware to get the userId and add in socket object
+
 // create new server for socket.io
-const server = http.createServer();
+const server = http.createServer(app);
 
 // create new intance for the socket.io by providing the server
 const io = new Server(server, {
   cors: "*",
   methods: ["GET", "POST"],
 });
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+
+  if (!token) {
+    return socket.emit("auth", { message: "Token not provided" });
+  }
+  try {
+    const userData = jwt.verify(token, process.env.JWT_SECRETKEY);
+    socket.userId = userData.userId;
+    next();
+  } catch (err) {
+    console.log(err.message, "error while extracting token");
+    socket.off();
+  }
+});
 
 // once server is establised exicute the callback
 io.on("connection", (socket) => {
-  console.log(socket.id);
+  console.log(socket.userId, "userId in socket");
 
   interviewSocket(socket);
 });

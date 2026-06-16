@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config();
 import { GoogleGenAI } from "@google/genai";
+import { endInterviewSystemPrompt } from "../../../Utils/prompts.js";
 // import OpenAI from "openai";
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
@@ -35,9 +36,11 @@ export async function liveInterview(req, res) {
 //#end sample code
 
 async function askAI({ messages }) {
-  const prompt = messages.map((item) => {
-    return `${item.role} : ${item.content}`;
-  });
+  const prompt = messages
+    .map((item) => {
+      return `${item.role} : ${item.content}`;
+    })
+    .join("/n");
 
   try {
     // GEMINI AI
@@ -52,4 +55,41 @@ async function askAI({ messages }) {
   }
 }
 
-export { askAI };
+// Get return data in json format
+async function getFeedbackFromAI({ messages }) {
+  console.log(messages);
+
+  const prompt = messages
+    .map((item) => {
+      // console.log(messages,prompt)
+      return `${item.role} : ${item.content}`;
+    })
+    .join("/n");
+
+  try {
+    // GEMINI AI
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    return response.text;
+  } catch (err) {
+    return Promise.reject(err);
+  }
+}
+
+const dummyConversation = [
+  { role: "assistant", content: "Explain promise in javascript" },
+  {
+    role: "user",
+    content:
+      "Promise is an object, we use promises to handle async tasks, it has 2 stages resolved and rejected",
+  },
+  { role: "stystem", content: endInterviewSystemPrompt() },
+];
+
+export { askAI, getFeedbackFromAI };
