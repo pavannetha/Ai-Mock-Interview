@@ -17,6 +17,8 @@ export default function Home() {
   const [buttonText, setButtonText] = useState("Start");
   const [buttonColor, setButtonColor] = useState("bg-blue-400");
   const [isAISpeaking, setIsAIspeaking] = useState(false);
+  const [timer, setTimer] = useState(1.1 * 60);
+  const [isLastMinute, setIsLastMinute] = useState(false);
   const [currentStage, setCurrentStage] = useState(
     INTERVIEW_STAGES.NOT_ANSWER_YET,
   );
@@ -71,6 +73,8 @@ export default function Home() {
       }
     });
 
+    //
+
     // return () => {
     //   console.log("socket disssconted");
     //   socket.off("comfirm-interview");
@@ -78,8 +82,32 @@ export default function Home() {
     // };
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimer((prev) => {
+        if (prev <= 60) {
+          socket.emit("end-interview");
+          setIsLastMinute(true);
+        }
+
+        if (prev <= 0) {
+          clearInterval(interval);
+          return 0;
+        } else {
+          return prev - 1;
+        }
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className=" h-screen flex flex-col items-center">
+      <p
+        className={`${isLastMinute ? "text-red-500" : "text-black"} text-2xl font-bold`}
+      >
+        {timer}
+      </p>
       {/* <form onSubmit={callAPi}>
         <div className="flex justify-center mt-3 gap-1">
           <input

@@ -172,7 +172,12 @@ function interviewSocket(socket) {
     */
 
   socket.on("end-interview", async () => {
+    console.log("interview is ending");
     const session = interviewSessions.get(socket.id);
+
+    if (!session) {
+      return;
+    }
 
     // {technicalScore : 8, communicationScore : 2, strongAreas : ["react","react-router","react-practical"], weakAreas : ["DSA","JS fundamentals","Constructor function"], roadMap : "Should practice more on DSA part for week 1 ...."}
 

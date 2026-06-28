@@ -1,4 +1,4 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import {
   BrowserRouter,
   Outlet,
@@ -17,7 +17,9 @@ import Sidebar from "./components/Sidebar";
 import NewInterview from "./pages/NewInterview";
 import History from "./pages/History";
 import Profile from "./pages/Profile";
-import Dashboard from "./pages/Dashboard";
+// import Dashboard from "./pages/Dashboard";
+const Dashboard = lazy(() => import(`./pages/Dashboard`));
+import LoaderFallBack from "./components/LoaderFallBack";
 
 function App() {
   return (
@@ -37,7 +39,14 @@ function App() {
               <Route path="/new-interview" element={<NewInterview />} />
               <Route path="/history" element={<History />} />
               <Route path="/profile" element={<Profile />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route
+                path="/dashboard"
+                element={
+                  <Suspense fallback={<LoaderFallBack />}>
+                    <Dashboard />
+                  </Suspense>
+                }
+              />
             </Route>
           </Route>
         </Routes>
