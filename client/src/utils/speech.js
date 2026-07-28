@@ -24,13 +24,15 @@ function textToSpeech(text, setIsAISpeaking) {
 
 let recognition = null;
 function startListening(onTranscript) {
-  const speechRecognition =
+  const SpeechRecognitionAPI =
     window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    toast("Brower is not supporing Speech recognition");
+
+  if (!SpeechRecognitionAPI) {
+    toast("Browser does not support speech recognition");
     return;
   }
-  recognition = new SpeechRecognition();
+
+  recognition = new SpeechRecognitionAPI();
   recognition.lang = "en-US";
   recognition.continuous = true;
   recognition.interimResults = true;

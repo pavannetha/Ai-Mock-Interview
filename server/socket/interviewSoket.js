@@ -8,6 +8,8 @@ import {
 } from "../Utils/prompts.js";
 
 const interviewSessions = new Map();
+const MAX_QUESTIONS = 10;
+const QUESTION_TIME_SECONDS = 300;
 
 function interviewSocket(socket) {
   // socket.on("first-message", (data) => {
@@ -20,7 +22,6 @@ function interviewSocket(socket) {
 
   const userId = socket.userId;
 
-  
   socket.on(
     "start-interview",
     async ({ stack = "MERN", difficultyLevel = "Fresher" }) => {
@@ -36,6 +37,8 @@ function interviewSocket(socket) {
           stack,
           difficultyLevel,
           startedAt: new Date(),
+          currentQuestionIndex: 0,
+          completedQuestions: 0,
           conversation: [
             {
               role: "system",
@@ -64,6 +67,7 @@ function interviewSocket(socket) {
                 ------------------------------------------------------
                 */
 
+        session.currentQuestionIndex = 1;
         session.conversation.push({
           role: "assistant",
 
@@ -72,6 +76,9 @@ function interviewSocket(socket) {
 
         socket.emit("ai-question", {
           question: firstQuestion,
+          questionIndex: session.currentQuestionIndex,
+          totalQuestions: MAX_QUESTIONS,
+          timeLimitSeconds: QUESTION_TIME_SECONDS,
         });
       } catch (err) {
         console.log(err);
@@ -95,44 +102,72 @@ function interviewSocket(socket) {
 
       if (!session) return;
 
-      /*
-                ------------------------------------------------------
-                | Save User Answer For Maintaining History Of Conversation
-                ------------------------------------------------------
-                */
-
-      // [{role : "system", content : "You are a senior softwer.."}, {role : "assistant", content : "What is javascript"}, {role : "user", content : "Javascript is a single threaded la..."}]
-
       session.conversation.push({
         role: "user",
-
-        content: answer,
+        content: answer || "No answer provided",
       });
 
-      /*
-                ------------------------------------------------------
-                | Ask Next Question
-                ------------------------------------------------------
-                */
+      session.completedQuestions += 1;
+
+      if (session.completedQuestions >= MAX_QUESTIONS) {
+        await finishInterview(socket, session);
+        return;
+      }
 
       const nextQuestion = await askAI({
         messages: session.conversation,
       });
 
-      /*
-                ------------------------------------------------------
-                | Save AI Question
-                ------------------------------------------------------
-                */
-
+      session.currentQuestionIndex += 1;
       session.conversation.push({
         role: "assistant",
-
         content: nextQuestion,
       });
 
       socket.emit("ai-question", {
         question: nextQuestion,
+        questionIndex: session.currentQuestionIndex,
+        totalQuestions: MAX_QUESTIONS,
+        timeLimitSeconds: QUESTION_TIME_SECONDS,
+      });
+    } catch (err) {
+      console.log(err);
+    }
+  });
+
+  socket.on("skip-question", async () => {
+    try {
+      const session = interviewSessions.get(socket.id);
+
+      if (!session) return;
+
+      session.conversation.push({
+        role: "user",
+        content: "Skipped question - not answered",
+      });
+
+      session.completedQuestions += 1;
+
+      if (session.completedQuestions >= MAX_QUESTIONS) {
+        await finishInterview(socket, session);
+        return;
+      }
+
+      const nextQuestion = await askAI({
+        messages: session.conversation,
+      });
+
+      session.currentQuestionIndex += 1;
+      session.conversation.push({
+        role: "assistant",
+        content: nextQuestion,
+      });
+
+      socket.emit("ai-question", {
+        question: nextQuestion,
+        questionIndex: session.currentQuestionIndex,
+        totalQuestions: MAX_QUESTIONS,
+        timeLimitSeconds: QUESTION_TIME_SECONDS,
       });
     } catch (err) {
       console.log(err);
@@ -173,38 +208,13 @@ function interviewSocket(socket) {
     */
 
   socket.on("end-interview", async () => {
-    console.log("interview is ending");
     const session = interviewSessions.get(socket.id);
 
     if (!session) {
       return;
     }
 
-    // {technicalScore : 8, communicationScore : 2, strongAreas : ["react","react-router","react-practical"], weakAreas : ["DSA","JS fundamentals","Constructor function"], roadMap : "Should practice more on DSA part for week 1 ...."}
-
-    // Before ending the interview get a feedback, get total score out of 10, get score for communication out of 5 and return an array for strong areas and weak areas also generate a week road map
-    const lastConversation = {
-      role: "stystem",
-      content: endInterviewSystemPrompt(),
-    };
-    session.endedAt = new Date();
-    // Add last conversation into session.conversation
-    session.conversation.push(lastConversation);
-
-    // Ask ai to get complete feedback in json format
-
-    const feedback = await getFeedbackFromAI({ message: session.conversation });
-
-    if (feedback) {
-      // store interview details in database
-      await addInterview(feedback);
-    }
-
-    console.log("Final Conversation:");
-
-    console.log(session?.conversation);
-
-    interviewSessions.delete(socket.id);
+    await finishInterview(socket, session);
   });
 
   /*
@@ -221,6 +231,29 @@ function interviewSocket(socket) {
 }
 
 export default interviewSocket;
+
+async function finishInterview(socket, session) {
+  const lastConversation = {
+    role: "system",
+    content: endInterviewSystemPrompt(),
+  };
+  session.endedAt = new Date();
+  session.conversation.push(lastConversation);
+
+  const feedback = await getFeedbackFromAI({
+    messages: session.conversation,
+  });
+
+  if (feedback) {
+    await addInterview(feedback);
+  }
+
+  socket.emit("interview-complete", {
+    message: "Interview complete. You answered 10 questions.",
+  });
+
+  interviewSessions.delete(socket.id);
+}
 
 async function addInterview() {
   // Take json from ai verify it with schema

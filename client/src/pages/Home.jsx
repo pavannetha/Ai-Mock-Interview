@@ -1,24 +1,29 @@
 import React, { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
 import { api } from "../apis/interceptors";
-import socket from "../../interviewSocket";
+import socket, { reconnectSocket } from "../../interviewSocket";
 import { startListening, stopListening, textToSpeech } from "../utils/speech";
-2;
+
 import aiDummy from "../assets/dummy-ai.jpeg";
 import { INTERVIEW_STAGES } from "../utils/constants";
 
+const QUESTION_TIME_SECONDS = 300;
+const TOTAL_QUESTIONS = 10;
+
 export default function Home() {
-  // const aiResponse =
-  //   'Here\'s "hello" in Telugu and Spanish:\n\n*   **Telugu:** Namaskaram (నమస్కారం)\n*   **Spanish:** Hola';
   const aiContentContainer = useRef();
   const [userText, setUserText] = useState("");
   const [answer, setAnswer] = useState("");
-  const [question, setQuestion] = useState("First Question");
+  const [question, setQuestion] = useState(
+    "Press start to begin the interview",
+  );
   const [buttonText, setButtonText] = useState("Start");
   const [buttonColor, setButtonColor] = useState("bg-blue-400");
   const [isAISpeaking, setIsAIspeaking] = useState(false);
-  const [timer, setTimer] = useState(1.1 * 60);
-  const [isLastMinute, setIsLastMinute] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(QUESTION_TIME_SECONDS);
+  const [questionNumber, setQuestionNumber] = useState(0);
+  const [skippedQuestions, setSkippedQuestions] = useState(0);
+  const [completedQuestions, setCompletedQuestions] = useState(0);
   const [currentStage, setCurrentStage] = useState(
     INTERVIEW_STAGES.NOT_ANSWER_YET,
   );
@@ -26,7 +31,7 @@ export default function Home() {
   async function callAPi(e) {
     e.preventDefault();
     if (!userText) {
-      toast("Add promt");
+      toast("Add prompt");
       return;
     }
     try {
@@ -39,129 +44,233 @@ export default function Home() {
     }
   }
 
-  function socketFirstMsg() {
-    socket.emit("first-message", { message: "start intterview" });
+  function resetToIdle() {
+    setButtonText("Start");
+    setButtonColor("bg-blue-400");
+    setCurrentStage(INTERVIEW_STAGES.NOT_ANSWER_YET);
+    setTimeLeft(QUESTION_TIME_SECONDS);
+    setQuestionNumber(0);
+    setSkippedQuestions(0);
+    setCompletedQuestions(0);
+  }
+
+  function handleSubmitAnswer(skip = false) {
+    if (currentStage !== INTERVIEW_STAGES.ANSWERING) {
+      return;
+    }
+
+    stopListening();
+    const submittedAnswer = answer.trim();
+
+    if (skip) {
+      socket.emit("skip-question");
+      setSkippedQuestions((prev) => prev + 1);
+      toast.info("Question skipped. It will be marked as not answered.");
+    } else if (!submittedAnswer) {
+      toast.info("No answer detected. The question will be marked as skipped.");
+      socket.emit("skip-question");
+      setSkippedQuestions((prev) => prev + 1);
+    } else {
+      socket.emit("submit-answer", { answer: submittedAnswer });
+      setCompletedQuestions((prev) => prev + 1);
+    }
+
+    setAnswer("");
+    setQuestion("Getting the next question...");
+    setButtonText("Preparing...");
+    setButtonColor("bg-amber-400");
+    setCurrentStage(INTERVIEW_STAGES.WAITING_FOR_QUESTION);
+    setTimeLeft(QUESTION_TIME_SECONDS);
   }
 
   function handleStartButton() {
-    if (currentStage == INTERVIEW_STAGES.NOT_ANSWER_YET) {
-      startListening(setAnswer);
-      setButtonText("stop");
-      setCurrentStage(INTERVIEW_STAGES.ANSWERING);
-      setButtonColor("bg-orange-400");
+    if (!localStorage.getItem("token")) {
+      toast.error("Please login first");
+      return;
     }
-    if (currentStage == INTERVIEW_STAGES.ANSWERING) {
-      stopListening();
-      setButtonText("Submit");
-      setCurrentStage(INTERVIEW_STAGES.COMPLETED_ANSWERING);
-      setButtonColor("bg-green-400");
-    }
-    if (currentStage == INTERVIEW_STAGES.COMPLETED_ANSWERING) {
-      setButtonText("Start");
+
+    if (currentStage === INTERVIEW_STAGES.NOT_ANSWER_YET) {
+      reconnectSocket();
       setAnswer("");
-      setCurrentStage(INTERVIEW_STAGES.NOT_ANSWER_YET);
-      setButtonColor("bg-blue-400");
+      setQuestion("Generating your first question...");
+      setButtonText("Preparing...");
+      setButtonColor("bg-amber-400");
+      setCurrentStage(INTERVIEW_STAGES.WAITING_FOR_QUESTION);
+      socket.emit("start-interview", {
+        stack: "MERN",
+        difficultyLevel: "Fresher",
+      });
+      return;
+    }
+
+    if (currentStage === INTERVIEW_STAGES.WAITING_FOR_QUESTION) {
+      return;
+    }
+
+    if (currentStage === INTERVIEW_STAGES.ANSWERING) {
+      handleSubmitAnswer(false);
+      return;
+    }
+
+    if (currentStage === INTERVIEW_STAGES.COMPLETED_ANSWERING) {
+      resetToIdle();
     }
   }
 
   useEffect(() => {
-    socket.connect();
-    socket.on("comfirm-interview", (data) => {
-      console.log("data from socket serverrr", data);
-      if ((data.message, setIsAIspeaking)) {
-        textToSpeech(data.message);
-      }
+    const token = localStorage.getItem("token");
+    if (!token) {
+      return;
+    }
+
+    reconnectSocket();
+
+    socket.on("connect", () => {
+      console.log("socket connected");
     });
 
-    //
+    socket.on(
+      "ai-question",
+      ({
+        question: nextQuestion,
+        questionIndex,
+        totalQuestions,
+        timeLimitSeconds,
+      }) => {
+        setQuestion(nextQuestion);
+        setQuestionNumber(questionIndex || 1);
+        setTimeLeft(timeLimitSeconds || QUESTION_TIME_SECONDS);
+        textToSpeech(nextQuestion, setIsAIspeaking);
+        startListening(setAnswer);
+        setButtonText("Submit");
+        setButtonColor("bg-orange-400");
+        setCurrentStage(INTERVIEW_STAGES.ANSWERING);
+        toast.success(
+          `Question ${questionIndex || 1} of ${totalQuestions || TOTAL_QUESTIONS}`,
+        );
+      },
+    );
 
-    // return () => {
-    //   console.log("socket disssconted");
-    //   socket.off("comfirm-interview");
-    //   socket.disconnect
-    // };
+    socket.on("interview-complete", ({ message }) => {
+      stopListening();
+      setQuestion(message || "Interview complete");
+      setButtonText("Completed");
+      setButtonColor("bg-green-600");
+      setCurrentStage(INTERVIEW_STAGES.COMPLETED_INTERVIEW);
+      setTimeLeft(0);
+    });
+
+    socket.on("error", ({ message }) => {
+      toast.error(message || "Interview error");
+      stopListening();
+      resetToIdle();
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("ai-question");
+      socket.off("interview-complete");
+      socket.off("error");
+      socket.disconnect();
+    };
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimer((prev) => {
-        if (prev <= 60) {
-          socket.emit("end-interview");
-          setIsLastMinute(true);
-        }
+    if (currentStage !== INTERVIEW_STAGES.ANSWERING) {
+      return;
+    }
 
-        if (prev <= 0) {
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
           clearInterval(interval);
+          handleSubmitAnswer(true);
           return 0;
-        } else {
-          return prev - 1;
         }
+        return prev - 1;
       });
     }, 1000);
+
     return () => clearInterval(interval);
-  }, []);
+  }, [currentStage]);
+
+  function formatTime(seconds) {
+    const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
+    const secs = String(seconds % 60).padStart(2, "0");
+    return `${mins}:${secs}`;
+  }
 
   return (
-    <div className=" h-screen flex flex-col items-center">
-      <p
-        className={`${isLastMinute ? "text-red-500" : "text-black"} text-2xl font-bold`}
-      >
-        {timer}
-      </p>
-      {/* <form onSubmit={callAPi}>
-        <div className="flex justify-center mt-3 gap-1">
-          <input
-            type="text"
-            className="w-80 shadow-2xl border-1 p-1.5 rounded"
-            placeholder="Ask AI"
-            value={userText}
-            onChange={(e) => setUserText(e.target.value)}
-          />
-          <input
-            type="submit"
-            value="Submit"
-            className={`${!userText.length ? "bg-blue-200" : "bg-blue-400"}  shadow-2xl text-white border-1 p-1.5 rounded`}
-            disabled={!userText.length ? true : false}
-          />
-        </div>
-        <div ref={aiContentContainer}></div>
-      </form>
-      <button onClick={socketFirstMsg}>first message</button>
-      <br />
-      <button onClick={() => startListening(setAnswer)}>Start Listening</button>
-      <br />
-      <button onClick={stopListening}>stop Listening</button>
+    <div className="h-screen flex flex-col items-center px-4 py-4">
+      <div className="flex items-center gap-4 mt-4">
+        <p className="text-lg font-semibold">
+          Question {questionNumber}/{TOTAL_QUESTIONS}
+        </p>
+        <p
+          className={`${timeLeft <= 60 ? "text-red-500" : "text-black"} text-2xl font-bold`}
+        >
+          {formatTime(timeLeft)}
+        </p>
+      </div>
 
-      <div>
-        <textarea
-          className="w-[400px] h-[250px] border"
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-        ></textarea>
-      </div> */}
-      <div className="mt-7">
-        <img
-          className={`h-60 rounded-3xl ${isAISpeaking ? "opacity-50" : "opacity-100"}`}
-          src={aiDummy}
-          alt="could not load the image"
-        />
-        <h3 className="text-xl font-bold">{question}</h3>
-      </div>
-      <div className="flex gap-2">
-        <textarea
-          className="w-[700px] rounded border"
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-        ></textarea>
-        <div>
-          <button
-            onClick={handleStartButton}
-            className={`p-3 ${buttonColor} border-1 rounded text-white`}
-          >
-            {buttonText}
-          </button>
+      {currentStage === INTERVIEW_STAGES.COMPLETED_INTERVIEW ? (
+        <div className="mt-8 w-full max-w-[700px] rounded-xl border border-green-300 bg-green-50 p-6 shadow-sm">
+          <h3 className="text-2xl font-bold text-green-700">
+            Interview completed
+          </h3>
+          <p className="mt-2 text-gray-700">
+            You completed {completedQuestions} answered questions and skipped{" "}
+            {skippedQuestions} question(s).
+          </p>
+          <div className="mt-4 flex gap-2 flex-wrap">
+            <span className="rounded-full bg-green-600 px-3 py-1 text-sm text-white">
+              Answered: {completedQuestions}
+            </span>
+            <span className="rounded-full bg-yellow-500 px-3 py-1 text-sm text-white">
+              Skipped: {skippedQuestions}
+            </span>
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="mt-7 text-center">
+            <img
+              className={`h-60 rounded-3xl ${isAISpeaking ? "opacity-50" : "opacity-100"}`}
+              src={aiDummy}
+              alt="could not load the image"
+            />
+            <h3 className="text-xl font-bold mt-4">{question}</h3>
+          </div>
+          <div className="flex flex-col md:flex-row gap-2 mt-4 w-full max-w-[900px]">
+            <textarea
+              className="w-full rounded border p-3 min-h-[120px]"
+              value={answer}
+              onChange={(e) => setAnswer(e.target.value)}
+              placeholder="Speak or type your answer"
+              disabled={currentStage !== INTERVIEW_STAGES.ANSWERING}
+            ></textarea>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={handleStartButton}
+                disabled={
+                  currentStage === INTERVIEW_STAGES.WAITING_FOR_QUESTION ||
+                  currentStage === INTERVIEW_STAGES.COMPLETED_INTERVIEW
+                }
+                className={`p-3 ${buttonColor} border rounded text-white ${currentStage === INTERVIEW_STAGES.WAITING_FOR_QUESTION || currentStage === INTERVIEW_STAGES.COMPLETED_INTERVIEW ? "cursor-not-allowed opacity-70" : ""}`}
+              >
+                {buttonText}
+              </button>
+              <button
+                onClick={() => handleSubmitAnswer(true)}
+                disabled={currentStage !== INTERVIEW_STAGES.ANSWERING}
+                className="p-3 bg-gray-600 rounded text-white disabled:opacity-50"
+              >
+                Skip
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

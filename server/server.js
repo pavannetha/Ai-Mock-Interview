@@ -14,6 +14,11 @@ import interviewSocket from "./socket/interviewSoket.js";
 import jwt from "jsonwebtoken";
 import { rejects } from "assert";
 import { error } from "console";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
+import { pipeline } from "stream/promises";
+import { Readable, Transform } from "stream";
 // import jsonwebtoken from "jsonwebtoken";
 // import cookieParser from "cookie-parser";
 
@@ -46,18 +51,19 @@ const io = new Server(server, {
   methods: ["GET", "POST"],
 });
 io.use((socket, next) => {
-  const token = socket.handshake.auth.token;
+  const token = socket.handshake.auth?.token;
 
   if (!token) {
-    return socket.emit("auth", { message: "Token not provided" });
+    return next(new Error("Token not provided"));
   }
+
   try {
     const userData = jwt.verify(token, process.env.JWT_SECRETKEY);
     socket.userId = userData.userId;
     next();
   } catch (err) {
     console.log(err.message, "error while extracting token");
-    socket.off();
+    next(new Error("Invalid token"));
   }
 });
 
@@ -69,6 +75,7 @@ io.on("connection", (socket) => {
 });
 
 // change app to server
+
 server.listen(process.env.PORT, () => {
   console.log(`server is running at ${process.env.PORT} `);
 });

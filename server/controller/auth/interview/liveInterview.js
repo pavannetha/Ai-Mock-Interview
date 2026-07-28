@@ -40,7 +40,7 @@ async function askAI({ messages }) {
     .map((item) => {
       return `${item.role} : ${item.content}`;
     })
-    .join("/n");
+    .join("\n");
 
   try {
     // GEMINI AI
@@ -64,7 +64,7 @@ async function getFeedbackFromAI({ messages }) {
       // console.log(messages,prompt)
       return `${item.role} : ${item.content}`;
     })
-    .join("/n");
+    .join("\n");
 
   try {
     // GEMINI AI
