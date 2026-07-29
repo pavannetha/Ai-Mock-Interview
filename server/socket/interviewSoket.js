@@ -6,6 +6,7 @@ import {
   endInterviewSystemPrompt,
   startInterviewSystemPrompt,
 } from "../Utils/prompts.js";
+import { saveInterviewToDatabase } from "../Utils/interviewStorage.js";
 
 const interviewSessions = new Map();
 const MAX_QUESTIONS = 10;
@@ -245,7 +246,11 @@ async function finishInterview(socket, session) {
   });
 
   if (feedback) {
-    await addInterview(feedback);
+    try {
+      await saveInterviewToDatabase(feedback, session);
+    } catch (error) {
+      console.error("Failed to save interview to database", error);
+    }
   }
 
   socket.emit("interview-complete", {
@@ -254,22 +259,3 @@ async function finishInterview(socket, session) {
 
   interviewSessions.delete(socket.id);
 }
-
-async function addInterview() {
-  // Take json from ai verify it with schema
-  // Then create a new object and pass all details to it (object should be mathcing with Interview model schema)
-  // Tag userId, stack, difficultyLevel, conversation, startedAt and endedAt
-  // Once complete object is created for Interview model then add it in database
-}
-
-/*
-1. Complete addInterview function
-2. Create api to get interview details from Interview model based on userId
-3. Show interview details in dashboard 
-
-
-Reference for picharts
-
-https://www.npmjs.com/package/react-chartjs-2#docs
-
-*/

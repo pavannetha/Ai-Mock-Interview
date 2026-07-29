@@ -1,44 +1,41 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   CartesianGrid,
   Legend,
   Line,
   LineChart,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import { api } from "../apis/interceptors";
 
 function TechnicalScoreChart() {
-  const data = [
-    {
-      interview: `Interview 1`,
-      technicalScore: 3,
-      date: "3 june",
-    },
+  const [data, setData] = useState([]);
 
-    {
-      interview: `Interview 2`,
-      technicalScore: 5,
-      date: "5 june",
-    },
-    {
-      interview: `Interview 3`,
-      technicalScore: 6.5,
-      date: "8 june",
-    },
-    {
-      interview: `Interview 4`,
-      technicalScore: 7,
-      date: "10 june",
-    },
-    {
-      interview: `Interview 5`,
-      technicalScore: 9,
-      date: "13 june", // 14 June
-    },
-  ];
+  useEffect(() => {
+    const fetchInterviewHistory = async () => {
+      try {
+        const response = await api.get("/interview/history");
+        const interviews = response?.data?.interviews || [];
+
+        const chartData = interviews.map((interview, index) => ({
+          interview: `Interview ${index + 1}`,
+          technicalScore: interview.technicalScore ?? 0,
+          date: interview.startedAt
+            ? new Date(interview.startedAt).toLocaleDateString()
+            : "N/A",
+        }));
+
+        setData(chartData);
+      } catch (error) {
+        console.error("Failed to load interview history", error);
+      }
+    };
+
+    fetchInterviewHistory();
+  }, []);
+
   return (
     <div className="p-8">
       {/* <ResponsiveContainer width="100%" aspect={1.618} maxHeight={400}> */}

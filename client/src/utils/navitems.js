@@ -1,10 +1,14 @@
 export const navitems = [
   {
-    name: "Dashboard",
+    name: "Home",
     path: "/",
   },
   {
-    name: "New Interview",
+    name: "Dashboard",
+    path: "/dashboard",
+  },
+  {
+    name: "NewInterview",
     path: "/new-interview",
   },
   {
