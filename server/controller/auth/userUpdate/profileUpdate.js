@@ -13,7 +13,7 @@ export async function profileUpdate(req, res) {
     }
     const updatedUser = await user
       .findByIdAndUpdate(userId, body, {
-        new: true,
+        returnDocument: "after",
         runValidators: true,
       })
       .select("-password");
