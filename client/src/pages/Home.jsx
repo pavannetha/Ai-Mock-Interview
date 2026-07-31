@@ -13,11 +13,6 @@ export default function Home() {
       path: "/new-interview",
     },
     {
-      title: "Interview History",
-      description: "Review previous interview results.",
-      path: "/history",
-    },
-    {
       title: "Profile",
       description: "Update your personal details.",
       path: "/profile",

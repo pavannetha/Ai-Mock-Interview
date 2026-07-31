@@ -12,10 +12,6 @@ export const navitems = [
     path: "/new-interview",
   },
   {
-    name: "History",
-    path: "/history",
-  },
-  {
     name: "Profile",
     path: "/profile",
   },

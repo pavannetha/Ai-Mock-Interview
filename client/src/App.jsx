@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from "react";
 import {
   BrowserRouter,
+  Navigate,
   Outlet,
   Route,
   Routes,
@@ -15,7 +16,7 @@ import AuthProtectedLayout from "./components/AuthProtectedLayout";
 import FallBackLayout from "./components/FallBackLayout";
 import Sidebar from "./components/Sidebar";
 import NewInterview from "./pages/NewInterview";
-import History from "./pages/History";
+// import History from "./pages/History";
 import Profile from "./pages/Profile";
 // import Dashboard from "./pages/Dashboard";
 const Dashboard = lazy(() => import(`./pages/Dashboard`));
@@ -34,10 +35,9 @@ function App() {
               <Route path="/signup" element={<Signup />} />
             </Route>
             <Route element={<AuthProtectedLayout />}>
-              <Route path="*" element={<FallBackLayout />} />
               <Route path="/" element={<Home />} />
               <Route path="/new-interview" element={<NewInterview />} />
-              <Route path="/history" element={<History />} />
+              {/* <Route path="/history" element={<History />} /> */}
               <Route path="/profile" element={<Profile />} />
               <Route
                 path="/dashboard"
@@ -47,6 +47,8 @@ function App() {
                   </Suspense>
                 }
               />
+              <Route path="/404" element={<FallBackLayout />} />
+              <Route path="*" element={<Navigate to="/404" replace />} />
             </Route>
           </Route>
         </Routes>
@@ -57,8 +59,9 @@ function App() {
 
 function Layout() {
   const location = useLocation();
-  const isSidebarHidden =
-    location.pathname === "/login" || location.pathname === "/signup";
+  const isSidebarHidden = ["/login", "/signup", "/404"].includes(
+    location.pathname,
+  );
   return (
     <div className="h-screen flex">
       {!isSidebarHidden && (
