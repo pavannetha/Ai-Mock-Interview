@@ -65,7 +65,7 @@ function Layout() {
   return (
     <div className="h-screen flex">
       {!isSidebarHidden && (
-        <div className="border-1 w-44 fixed left-0 top-0 h-screen">
+        <div className="border-b-black-100 rounded shadow-xl w-44 fixed left-0 top-0 h-screen">
           <Sidebar />
         </div>
       )}
